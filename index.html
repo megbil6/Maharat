@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-width=1.0">
+    <title>لعبة مسار البيانات - اللوبي</title>
+    <!-- استدعاء مكتبة PapaParse لتسهيل قراءة ملفات الشيت (CSV) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --team-a: #10b981;
+            --team-b: #f59e0b;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .lobby-container {
+            background-color: var(--panel-bg);
+            padding: 30px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        h1, h2 { text-align: center; }
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        label { margin-bottom: 8px; font-weight: bold; }
+        select, button {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background-color: #0f172a;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            background-color: var(--primary);
+            cursor: pointer;
+            border: none;
+            transition: 0.3s;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        .teams-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 20px;
+        }
+        .team {
+            flex: 1;
+            background-color: #0f172a;
+            padding: 15px;
+            border-radius: 10px;
+            border-top: 4px solid;
+        }
+        .team-a { border-color: var(--team-a); }
+        .team-b { border-color: var(--team-b); }
+        .student-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #334155;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .swap-btn {
+            background-color: #475569;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+        #game-section { display: none; text-align: center; margin-top: 50px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="lobby-container" id="lobby-section">
+        <h1>إعداد التحدي - مسار البيانات</h1>
+        
+        <!-- إعدادات الأسئلة -->
+        <div class="form-group">
+            <label>اختر الوحدة:</label>
+            <select id="unit-select" onchange="loadLessons()"><option>جاري التحميل...</option></select>
+        </div>
+        <div class="form-group">
+            <label>اختر الدرس:</label>
+            <select id="lesson-select" disabled><option>اختر الوحدة أولاً</option></select>
+        </div>
+
+        <!-- إعدادات الفصل والطلاب -->
+        <div class="form-group">
+            <label>اختر الفصل:</label>
+            <select id="class-select">
+                <!-- أضف أسماء تبويبات الشيت هنا بدقة -->
+                <option value="">-- اختر الفصل --</option>
+                <option value="سادس أ">سادس أ</option>
+                <option value="سادس ب">سادس ب</option>
+                <option value="خامس أ">خامس أ</option>
+                <option value="رابع أ">رابع أ</option>
+            </select>
+        </div>
+
+        <button onclick="generateTeams()">سحب الفرق عشوائياً</button>
+
+        <!-- منطقة عرض الفرق -->
+        <div class="teams-container hidden" id="teams-area">
+            <div class="team team-a">
+                <h2 style="color: var(--team-a);">الفريق الأول</h2>
+                <div id="team-a-list"></div>
+            </div>
+            <div class="team team-b">
+                <h2 style="color: var(--team-b);">الفريق الثاني</h2>
+                <div id="team-b-list"></div>
+            </div>
+        </div>
+
+        <button id="start-btn" class="hidden" onclick="startGame()" style="width: 100%; background-color: #10b981; font-size: 18px; padding: 15px;">بدء التحدي</button>
+    </div>
+
+    <!-- شاشة اللعبة (سيتم برمجتها لاحقاً، حالياً تظهر رسالة تأكيد) -->
+    <div id="game-section">
+        <h1>تم استيراد البيانات بنجاح! السيرفر جاهز للعبة.</h1>
+        <div id="test-output"></div>
+    </div>
+
+    <script>
+        // معرفات ملفات قوقل شيت الخاصة بك
+        const QUESTIONS_SHEET_ID = '1WyxijjF5hdX6B8bmCQOk-16Jwon1ejECbBuQXH0iwaI';
+        const STUDENTS_SHEET_ID = '1cBr5-rX-HAI-ZykHwE1cSSTyquNno82h0fyf4vUAdyI';
+
+        let allQuestions = [];
+        let availableStudents = [];
+        let teamA = [];
+        let teamB = [];
+        let currentClass = "";
+
+        // دالة سحب الأسئلة من الشيت
+        function fetchQuestions() {
+            const url = `https://docs.google.com/spreadsheets/d/${QUESTIONS_SHEET_ID}/gviz/tq?tqx=out:csv`;
+            Papa.parse(url, {
+                download: true,
+                header: false, // نعتمد على ترتيب الأعمدة الذي اتفقنا عليه
+                complete: function(results) {
+                    // تجاهل الصف الأول إذا كان عناوين
+                    allQuestions = results.data.filter(row => row.length > 3 && row[0]); 
+                    populateUnits();
+                }
+            });
+        }
+
+        // دالة عرض الوحدات في القائمة بدون تكرار
+        function populateUnits() {
+            const unitSelect = document.getElementById('unit-select');
+            const units = [...new Set(allQuestions.map(row => row[0]))];
+            
+            unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
+            units.forEach(unit => {
+                if(unit && unit !== "الوحدة") { // تجاهل عنوان العمود
+                    unitSelect.innerHTML += `<option value="${unit}">${unit}</option>`;
+                }
+            });
+        }
+
+        // دالة عرض الدروس بناءً على الوحدة المختارة
+        function loadLessons() {
+            const unitSelect = document.getElementById('unit-select').value;
+            const lessonSelect = document.getElementById('lesson-select');
+            
+            if(!unitSelect) {
+                lessonSelect.innerHTML = '<option>اختر الوحدة أولاً</option>';
+                lessonSelect.disabled = true;
+                return;
+            }
+
+            const lessons = [...new Set(allQuestions.filter(row => row[0] === unitSelect).map(row => row[1]))];
+            
+            lessonSelect.innerHTML = '<option value="all">جميع دروس الوحدة</option>';
+            lessons.forEach(lesson => {
+                if(lesson) lessonSelect.innerHTML += `<option value="${lesson}">${lesson}</option>`;
+            });
+            lessonSelect.disabled = false;
+        }
+
+        // دالة سحب الطلاب للفصل المختار وتوليد الفرق
+        function generateTeams() {
+            const className = document.getElementById('class-select').value;
+            if(!className) {
+                alert("الرجاء اختيار الفصل أولاً");
+                return;
+            }
+
+            // إذا تم تغيير الفصل، نسحب بياناته من الشيت
+            if(currentClass !== className) {
+                currentClass = className;
+                const url = `https://docs.google.com/spreadsheets/d/${STUDENTS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${className}`;
+                
+                Papa.parse(url, {
+                    download: true,
+                    header: false,
+                    complete: function(results) {
+                        // أخذ العمود الأول فقط وتجاهل الخلايا الفارغة أو العناوين
+                        availableStudents = results.data.map(row => row[0]).filter(name => name && name !== "الاسم" && name !== "اسم الطالب");
+                        pickRandomTeams();
+                    }
+                });
+            } else {
+                pickRandomTeams();
+            }
+        }
+
+        // دالة الاختيار العشوائي
+        function pickRandomTeams() {
+            if(availableStudents.length < 4) {
+                alert("عدد الطلاب غير كافٍ في هذا الفصل");
+                return;
+            }
+
+            // خلط المصفوفة
+            let shuffled = [...availableStudents].sort(() => 0.5 - Math.random());
+            
+            // اختيار طالبين لكل فريق (يمكن زيادتها لثلاثة بتغيير الرقم)
+            teamA = [shuffled[0], shuffled[1]];
+            teamB = [shuffled[2], shuffled[3]];
+            
+            // إزالة الطلاب المختارين من قائمة المتاحين للتبديل لاحقاً
+            availableStudents = availableStudents.filter(name => !teamA.includes(name) && !teamB.includes(name));
+
+            renderTeams();
+            document.getElementById('teams-area').classList.remove('hidden');
+            document.getElementById('start-btn').classList.remove('hidden');
+        }
+
+        // دالة التبديل السريع لطالب غائب
+        function swapStudent(teamName, index) {
+            if(availableStudents.length === 0) {
+                alert("لا يوجد طلاب متبقين في القائمة للتبديل!");
+                return;
+            }
+
+            let randomIndex = Math.floor(Math.random() * availableStudents.length);
+            let newStudent = availableStudents[randomIndex];
+
+            if(teamName === 'A') {
+                availableStudents.push(teamA[index]); // إعادة الطالب القديم للقائمة
+                teamA[index] = newStudent;
+            } else {
+                availableStudents.push(teamB[index]);
+                teamB[index] = newStudent;
+            }
+
+            availableStudents.splice(randomIndex, 1); // إزالة الطالب الجديد من المتاحين
+            renderTeams();
+        }
+
+        // رسم الفرق على الشاشة
+        function renderTeams() {
+            const listA = document.getElementById('team-a-list');
+            const listB = document.getElementById('team-b-list');
+            
+            listA.innerHTML = '';
+            teamA.forEach((student, index) => {
+                listA.innerHTML += `<div class="student-item">
+                    <span>${student}</span>
+                    <button class="swap-btn" onclick="swapStudent('A', ${index})">تبديل 🔄</button>
+                </div>`;
+            });
+
+            listB.innerHTML = '';
+            teamB.forEach((student, index) => {
+                listB.innerHTML += `<div class="student-item">
+                    <span>${student}</span>
+                    <button class="swap-btn" onclick="swapStudent('B', ${index})">تبديل 🔄</button>
+                </div>`;
+            });
+        }
+
+        // دالة ذكية لمعالجة روابط قوقل درايف وتحويلها لصور
+        function processDriveLinks(text) {
+            if(text && text.includes('drive.google.com/file/d/')) {
+                const match = text.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if(match && match[1]) {
+                    return `<br><img src="https://drive.google.com/uc?export=view&id=${match[1]}" alt="لبنة برمجية" style="max-width: 150px; border-radius: 8px; margin-top: 10px;">`;
+                }
+            }
+            return text;
+        }
+
+        // دالة الانتقال للعبة الفعيلة
+        function startGame() {
+            document.getElementById('lobby-section').classList.add('hidden');
+            document.getElementById('game-section').style.display = 'block';
+            
+            // اختبار فلترة الأسئلة ومعالجة الصور
+            let selectedUnit = document.getElementById('unit-select').value;
+            let selectedLesson = document.getElementById('lesson-select').value;
+            
+            let filteredQuestions = allQuestions.filter(row => row[0] === selectedUnit);
+            if(selectedLesson !== 'all') {
+                filteredQuestions = filteredQuestions.filter(row => row[1] === selectedLesson);
+            }
+
+            let output = `<h3>عدد الأسئلة الجاهزة للتحدي: ${filteredQuestions.length}</h3>`;
+            
+            // استعراض سريع لأول سؤال للتأكد من معالجة الصورة
+            if(filteredQuestions.length > 0) {
+                output += `<div style="background:#1e293b; padding:15px; border-radius:10px; display:inline-block;">
+                <p style="color:#10b981;">مثال لسؤال مسحوب:</p>
+                <p>${processDriveLinks(filteredQuestions[0][2])}</p>
+                </div>`;
+            }
+            document.getElementById('test-output').innerHTML = output;
+        }
+
+        // تهيئة النظام عند فتح الصفحة
+        window.onload = fetchQuestions;
+    </script>
+</body>
+</html>
