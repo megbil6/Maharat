@@ -2,149 +2,231 @@
 <html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-width=1.0">
-    <title>لعبة مسار البيانات - اللوبي</title>
-    <!-- استدعاء مكتبة PapaParse لتسهيل قراءة ملفات الشيت (CSV) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تنافس وتعلم</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
+            --bg-color: #12182b;
+            --panel-bg: rgba(255, 255, 255, 0.05);
+            --border-color: rgba(255, 255, 255, 0.1);
             --text-color: #f8fafc;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --team-a: #10b981;
-            --team-b: #f59e0b;
+            --accent-yellow: #ffd700;
+            --btn-orange: linear-gradient(90deg, #ffaa00, #ff7700);
+            --input-bg: #1e293b;
         }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Cairo', sans-serif;
             background-color: var(--bg-color);
+            background-image: radial-gradient(circle at top, #1e293b, #12182b);
             color: var(--text-color);
             margin: 0;
-            padding: 20px;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .lobby-container {
-            background-color: var(--panel-bg);
-            padding: 30px;
-            border-radius: 15px;
+
+        .main-title {
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 40px;
             width: 100%;
-            max-width: 800px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-width: 600px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
-        h1, h2 { text-align: center; }
-        .form-group {
+
+        .section-title {
+            color: var(--accent-yellow);
+            font-size: 1.2rem;
+            font-weight: 700;
             margin-bottom: 20px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
-        label { margin-bottom: 8px; font-weight: bold; }
-        select, button {
-            padding: 12px;
-            border-radius: 8px;
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
             border: 1px solid #334155;
-            background-color: #0f172a;
+            background-color: var(--input-bg);
             color: white;
-            font-size: 16px;
-        }
-        button {
-            background-color: var(--primary);
-            cursor: pointer;
-            border: none;
+            font-size: 1rem;
+            font-family: 'Cairo', sans-serif;
+            box-sizing: border-box;
+            outline: none;
             transition: 0.3s;
-            font-weight: bold;
-            margin-top: 10px;
         }
-        button:hover { background-color: var(--primary-hover); }
+
+        select:focus, input:focus {
+            border-color: var(--accent-yellow);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        .row-group {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .row-group input {
+            width: 80px;
+            text-align: center;
+        }
+
+        .start-btn {
+            background: var(--btn-orange);
+            color: #111;
+            font-weight: 900;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 50px;
+            margin-top: 40px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 119, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-family: 'Cairo', sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(255, 119, 0, 0.4);
+        }
+
+        .start-btn:disabled {
+            background: #475569;
+            color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* تنسيقات الفرق (مخفية البداية) */
         .teams-container {
             display: flex;
             justify-content: space-between;
+            gap: 15px;
             margin-top: 30px;
-            gap: 20px;
         }
-        .team {
+        .team-box {
             flex: 1;
-            background-color: #0f172a;
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
             padding: 15px;
-            border-radius: 10px;
             border-top: 4px solid;
         }
-        .team-a { border-color: var(--team-a); }
-        .team-b { border-color: var(--team-b); }
+        .team-a { border-color: #10b981; }
+        .team-b { border-color: #3b82f6; }
         .student-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #334155;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
+            background: #1e293b;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 0.9rem;
         }
         .swap-btn {
-            background-color: #475569;
+            background: #475569;
+            border: none;
+            color: white;
             padding: 5px 10px;
-            font-size: 12px;
-            margin: 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
         }
-        #game-section { display: none; text-align: center; margin-top: 50px; }
-        .hidden { display: none; }
+        
+        .hidden { display: none !important; }
+        #loading-msg { color: #10b981; text-align: center; margin-top: 10px; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <div class="lobby-container" id="lobby-section">
-        <h1>إعداد التحدي - مسار البيانات</h1>
-        
-        <!-- إعدادات الأسئلة -->
-        <div class="form-group">
-            <label>اختر الوحدة:</label>
-            <select id="unit-select" onchange="loadLessons()"><option>جاري التحميل...</option></select>
-        </div>
-        <div class="form-group">
-            <label>اختر الدرس:</label>
-            <select id="lesson-select" disabled><option>اختر الوحدة أولاً</option></select>
-        </div>
+    <div class="main-title">
+        تنافس وتعلم 🏆
+    </div>
 
-        <!-- إعدادات الفصل والطلاب -->
+    <div class="glass-panel" id="lobby-panel">
+        <div class="section-title">📚 اختر الدرس والفصل</div>
+        
         <div class="form-group">
-            <label>اختر الفصل:</label>
-            <select id="class-select">
-                <!-- أضف أسماء تبويبات الشيت هنا بدقة -->
-                <option value="">-- اختر الفصل --</option>
-                <option value="سادس أ">سادس أ</option>
-                <option value="سادس ب">سادس ب</option>
-                <option value="خامس أ">خامس أ</option>
-                <option value="رابع أ">رابع أ</option>
+            <select id="unit-select" onchange="loadLessons()">
+                <option value="">-- اختر الوحدة --</option>
             </select>
         </div>
 
-        <button onclick="generateTeams()">سحب الفرق عشوائياً</button>
+        <div class="form-group">
+            <select id="lesson-select" disabled>
+                <option value="">-- اختر الدرس --</option>
+            </select>
+        </div>
 
-        <!-- منطقة عرض الفرق -->
+        <div class="form-group">
+            <select id="class-select" onchange="fetchStudentsAndGenerateTeams()">
+     <option value="">-- اختر الفصل --</option>
+                <option value="سادس (1)">سادس (1)</option>
+                <option value="سادس (2)">سادس (2)</option>
+                <option value="سادس (3)">سادس (3)</option>
+                <option value="سادس (4)">سادس (4)</option>
+                <option value="سادس (5)">سادس (5)</option>
+                <option value="سادس (6)">سادس (6)</option>
+                <option value="سادس (7)">سادس (7)</option>
+                <option value="سادس (8)">سادس (8)</option>
+            </select>
+        </div>
+
+        <div class="row-group">
+            <label>عدد الأسئلة:</label>
+            <input type="number" id="question-count" value="10" min="1" max="50">
+        </div>
+
+        <div id="loading-msg"></div>
+
         <div class="teams-container hidden" id="teams-area">
-            <div class="team team-a">
-                <h2 style="color: var(--team-a);">الفريق الأول</h2>
+            <div class="team-box team-a">
+                <h3 style="color: #10b981; margin-top: 0;">الفريق الأول</h3>
                 <div id="team-a-list"></div>
             </div>
-            <div class="team team-b">
-                <h2 style="color: var(--team-b);">الفريق الثاني</h2>
+            <div class="team-box team-b">
+                <h3 style="color: #3b82f6; margin-top: 0;">الفريق الثاني</h3>
                 <div id="team-b-list"></div>
             </div>
         </div>
-
-        <button id="start-btn" class="hidden" onclick="startGame()" style="width: 100%; background-color: #10b981; font-size: 18px; padding: 15px;">بدء التحدي</button>
     </div>
 
-    <!-- شاشة اللعبة (سيتم برمجتها لاحقاً، حالياً تظهر رسالة تأكيد) -->
-    <div id="game-section">
-        <h1>تم استيراد البيانات بنجاح! السيرفر جاهز للعبة.</h1>
-        <div id="test-output"></div>
-    </div>
+    <button id="start-btn" class="start-btn" onclick="startCompetition()" disabled>
+        ابدأ المسابقة 🚀
+    </button>
 
     <script>
-        // معرفات ملفات قوقل شيت الخاصة بك
         const QUESTIONS_SHEET_ID = '1WyxijjF5hdX6B8bmCQOk-16Jwon1ejECbBuQXH0iwaI';
         const STUDENTS_SHEET_ID = '1cBr5-rX-HAI-ZykHwE1cSSTyquNno82h0fyf4vUAdyI';
 
@@ -152,48 +234,48 @@
         let availableStudents = [];
         let teamA = [];
         let teamB = [];
-        let currentClass = "";
 
-        // دالة سحب الأسئلة من الشيت
-        function fetchQuestions() {
+        // عند تحميل الصفحة، جلب الوحدات والدروس
+        window.onload = function() {
+            document.getElementById('loading-msg').innerText = "جاري الاتصال بقاعدة البيانات...";
             const url = `https://docs.google.com/spreadsheets/d/${QUESTIONS_SHEET_ID}/gviz/tq?tqx=out:csv`;
+            
             Papa.parse(url, {
                 download: true,
-                header: false, // نعتمد على ترتيب الأعمدة الذي اتفقنا عليه
+                header: false,
                 complete: function(results) {
-                    // تجاهل الصف الأول إذا كان عناوين
-                    allQuestions = results.data.filter(row => row.length > 3 && row[0]); 
+                    allQuestions = results.data.filter(row => row.length > 3 && row[0]);
                     populateUnits();
+                    document.getElementById('loading-msg').innerText = "";
+                },
+                error: function(error) {
+                    document.getElementById('loading-msg').innerText = "❌ خطأ في قراءة الأسئلة. تأكد من نشر الملف.";
+                    console.error("Error:", error);
                 }
             });
-        }
+        };
 
-        // دالة عرض الوحدات في القائمة بدون تكرار
         function populateUnits() {
             const unitSelect = document.getElementById('unit-select');
             const units = [...new Set(allQuestions.map(row => row[0]))];
-            
-            unitSelect.innerHTML = '<option value="">-- اختر الوحدة --</option>';
             units.forEach(unit => {
-                if(unit && unit !== "الوحدة") { // تجاهل عنوان العمود
+                if(unit && unit !== "الوحدة") {
                     unitSelect.innerHTML += `<option value="${unit}">${unit}</option>`;
                 }
             });
         }
 
-        // دالة عرض الدروس بناءً على الوحدة المختارة
         function loadLessons() {
             const unitSelect = document.getElementById('unit-select').value;
             const lessonSelect = document.getElementById('lesson-select');
             
             if(!unitSelect) {
-                lessonSelect.innerHTML = '<option>اختر الوحدة أولاً</option>';
+                lessonSelect.innerHTML = '<option value="">-- اختر الدرس --</option>';
                 lessonSelect.disabled = true;
                 return;
             }
 
             const lessons = [...new Set(allQuestions.filter(row => row[0] === unitSelect).map(row => row[1]))];
-            
             lessonSelect.innerHTML = '<option value="all">جميع دروس الوحدة</option>';
             lessons.forEach(lesson => {
                 if(lesson) lessonSelect.innerHTML += `<option value="${lesson}">${lesson}</option>`;
@@ -201,138 +283,101 @@
             lessonSelect.disabled = false;
         }
 
-        // دالة سحب الطلاب للفصل المختار وتوليد الفرق
-        function generateTeams() {
+        // سحب الطلاب عند اختيار الفصل مباشرة
+        function fetchStudentsAndGenerateTeams() {
             const className = document.getElementById('class-select').value;
+            const loadingMsg = document.getElementById('loading-msg');
+            const startBtn = document.getElementById('start-btn');
+            
             if(!className) {
-                alert("الرجاء اختيار الفصل أولاً");
+                document.getElementById('teams-area').classList.add('hidden');
+                startBtn.disabled = true;
                 return;
             }
 
-            // إذا تم تغيير الفصل، نسحب بياناته من الشيت
-            if(currentClass !== className) {
-                currentClass = className;
-                const url = `https://docs.google.com/spreadsheets/d/${STUDENTS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${className}`;
-                
-                Papa.parse(url, {
-                    download: true,
-                    header: false,
-                    complete: function(results) {
-                        // أخذ العمود الأول فقط وتجاهل الخلايا الفارغة أو العناوين
-                        availableStudents = results.data.map(row => row[0]).filter(name => name && name !== "الاسم" && name !== "اسم الطالب");
-                        pickRandomTeams();
+            loadingMsg.innerText = `جاري سحب أسماء طلاب ${className}...`;
+            startBtn.disabled = true;
+
+            const url = `https://docs.google.com/spreadsheets/d/${STUDENTS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${className}`;
+            
+            Papa.parse(url, {
+                download: true,
+                header: false,
+                complete: function(results) {
+                    availableStudents = results.data.map(row => row[0]).filter(name => name && name !== "الاسم" && name !== "اسم الطالب");
+                    
+                    if(availableStudents.length < 4) {
+                        loadingMsg.innerText = `❌ خطأ: لم يتم العثور على طلاب كافين. تأكد من اسم التبويب في الشيت.`;
+                        return;
                     }
-                });
-            } else {
-                pickRandomTeams();
-            }
+                    
+                    loadingMsg.innerText = "";
+                    pickRandomTeams();
+                    startBtn.disabled = false;
+                },
+                error: function() {
+                    loadingMsg.innerText = "❌ فشل الاتصال بملف الطلاب.";
+                }
+            });
         }
 
-        // دالة الاختيار العشوائي
         function pickRandomTeams() {
-            if(availableStudents.length < 4) {
-                alert("عدد الطلاب غير كافٍ في هذا الفصل");
-                return;
-            }
-
-            // خلط المصفوفة
             let shuffled = [...availableStudents].sort(() => 0.5 - Math.random());
-            
-            // اختيار طالبين لكل فريق (يمكن زيادتها لثلاثة بتغيير الرقم)
             teamA = [shuffled[0], shuffled[1]];
             teamB = [shuffled[2], shuffled[3]];
-            
-            // إزالة الطلاب المختارين من قائمة المتاحين للتبديل لاحقاً
             availableStudents = availableStudents.filter(name => !teamA.includes(name) && !teamB.includes(name));
-
             renderTeams();
             document.getElementById('teams-area').classList.remove('hidden');
-            document.getElementById('start-btn').classList.remove('hidden');
         }
 
-        // دالة التبديل السريع لطالب غائب
         function swapStudent(teamName, index) {
             if(availableStudents.length === 0) {
-                alert("لا يوجد طلاب متبقين في القائمة للتبديل!");
+                alert("تم استخدام جميع أسماء الفصل!");
                 return;
             }
-
             let randomIndex = Math.floor(Math.random() * availableStudents.length);
             let newStudent = availableStudents[randomIndex];
 
             if(teamName === 'A') {
-                availableStudents.push(teamA[index]); // إعادة الطالب القديم للقائمة
+                availableStudents.push(teamA[index]);
                 teamA[index] = newStudent;
             } else {
                 availableStudents.push(teamB[index]);
                 teamB[index] = newStudent;
             }
-
-            availableStudents.splice(randomIndex, 1); // إزالة الطالب الجديد من المتاحين
+            availableStudents.splice(randomIndex, 1);
             renderTeams();
         }
 
-        // رسم الفرق على الشاشة
         function renderTeams() {
             const listA = document.getElementById('team-a-list');
             const listB = document.getElementById('team-b-list');
             
-            listA.innerHTML = '';
-            teamA.forEach((student, index) => {
-                listA.innerHTML += `<div class="student-item">
-                    <span>${student}</span>
-                    <button class="swap-btn" onclick="swapStudent('A', ${index})">تبديل 🔄</button>
-                </div>`;
-            });
-
-            listB.innerHTML = '';
-            teamB.forEach((student, index) => {
-                listB.innerHTML += `<div class="student-item">
-                    <span>${student}</span>
-                    <button class="swap-btn" onclick="swapStudent('B', ${index})">تبديل 🔄</button>
-                </div>`;
-            });
+            listA.innerHTML = teamA.map((s, i) => `
+                <div class="student-item">
+                    <span>${s}</span>
+                    <button class="swap-btn" onclick="swapStudent('A', ${i})">تبديل</button>
+                </div>`).join('');
+                
+            listB.innerHTML = teamB.map((s, i) => `
+                <div class="student-item">
+                    <span>${s}</span>
+                    <button class="swap-btn" onclick="swapStudent('B', ${i})">تبديل</button>
+                </div>`).join('');
         }
 
-        // دالة ذكية لمعالجة روابط قوقل درايف وتحويلها لصور
-        function processDriveLinks(text) {
-            if(text && text.includes('drive.google.com/file/d/')) {
-                const match = text.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if(match && match[1]) {
-                    return `<br><img src="https://drive.google.com/uc?export=view&id=${match[1]}" alt="لبنة برمجية" style="max-width: 150px; border-radius: 8px; margin-top: 10px;">`;
-                }
-            }
-            return text;
-        }
-
-        // دالة الانتقال للعبة الفعيلة
-        function startGame() {
-            document.getElementById('lobby-section').classList.add('hidden');
-            document.getElementById('game-section').style.display = 'block';
-            
-            // اختبار فلترة الأسئلة ومعالجة الصور
-            let selectedUnit = document.getElementById('unit-select').value;
+        function startCompetition() {
             let selectedLesson = document.getElementById('lesson-select').value;
+            let count = document.getElementById('question-count').value;
             
-            let filteredQuestions = allQuestions.filter(row => row[0] === selectedUnit);
-            if(selectedLesson !== 'all') {
-                filteredQuestions = filteredQuestions.filter(row => row[1] === selectedLesson);
+            if(!selectedLesson) {
+                alert("الرجاء اختيار الدرس أولاً!");
+                return;
             }
-
-            let output = `<h3>عدد الأسئلة الجاهزة للتحدي: ${filteredQuestions.length}</h3>`;
             
-            // استعراض سريع لأول سؤال للتأكد من معالجة الصورة
-            if(filteredQuestions.length > 0) {
-                output += `<div style="background:#1e293b; padding:15px; border-radius:10px; display:inline-block;">
-                <p style="color:#10b981;">مثال لسؤال مسحوب:</p>
-                <p>${processDriveLinks(filteredQuestions[0][2])}</p>
-                </div>`;
-            }
-            document.getElementById('test-output').innerHTML = output;
+            // هنا ننتقل لبرمجة شاشة اللعبة لاحقاً
+            alert(`تم البدء! \nالفريق الأول: ${teamA.join(' و ')} \nالفريق الثاني: ${teamB.join(' و ')} \nعدد الأسئلة: ${count}`);
         }
-
-        // تهيئة النظام عند فتح الصفحة
-        window.onload = fetchQuestions;
     </script>
 </body>
 </html>
