@@ -211,7 +211,7 @@ body { font-family: 'Yoh', sans-serif; height: 100vh; overflow: hidden; backgrou
 .winner-tie   { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #1a1a2e; }
 .leaderboard {
   background: rgba(255,255,255,0.07); border-radius: 20px; padding: 20px 28px;
-  width: 100%; max-width: 700px; border: 1px solid rgba(255,255,255,0.1);
+  width: 100%; max-width: 480px; border: 1px solid rgba(255,255,255,0.1);
 }
 .leaderboard h3 { color: #ffd700; font-size: 1rem; margin-bottom: 12px; text-align: center; }
 .lb-row {
@@ -457,7 +457,7 @@ async function loadQuestions() {
 function onUnitChange() {
   const unit = document.getElementById('unit-select').value;
   const lessonSel = document.getElementById('lesson-select');
-  lessonSel.innerHTML = '<option value="">-- اختر الدرس --</option>';
+  lessonSel.innerHTML = '<option value="">-- اختر الدرس --</option><option value="__ALL__">📚 جميع دروس الوحدة</option>';
   lessonSel.disabled = !unit;
   if (unit && unitsMap[unit]) {
     Object.keys(unitsMap[unit]).forEach(l => {
@@ -560,7 +560,9 @@ function startGame() {
 
   if (!unit || !lesson || !classV) { setStatus('⚠️ اختر الوحدة والدرس والفصل'); return; }
 
-  const pool = unitsMap[unit]?.[lesson] || [];
+  const pool = lesson === '__ALL__'
+    ? Object.values(unitsMap[unit] || {}).flat()
+    : (unitsMap[unit]?.[lesson] || []);
   if (pool.length === 0) { setStatus('❌ لا توجد أسئلة لهذا الدرس'); return; }
 
   questionPool = [...pool]; // احتفظ بكل الأسئلة
