@@ -702,8 +702,11 @@ function handleAnswer(chosen, correct, choicesEl, teamId, isTimeout) {
   else greenTeam.score++;
   updateProgress();
 
-  // تحقق من الفوز
-  if (redTeam.score >= winScore || greenTeam.score >= winScore) {
+  // تحقق من الفوز فقط بعد انتهاء دور الفريق الأخضر (نهاية الجولة)
+  const roundComplete = currentTurn === 'green';
+  const someoneWon = redTeam.score >= winScore || greenTeam.score >= winScore;
+
+  if (someoneWon && roundComplete) {
     setTimeout(showResult, 1400);
   } else {
     setTimeout(() => {
