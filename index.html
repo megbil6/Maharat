@@ -3,318 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مسار البيانات - التحدي</title>
+    <title>مسار البيانات | التحدي الكبير</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: rgba(30, 41, 59, 0.7);
+            --bg-dark: #12182b;
+            --green-pastel: #e8f5e9;
+            --red-pastel: #ffebee;
+            --team-green: #2e7d32;
+            --team-red: #c62828;
             --accent-yellow: #ffd700;
-            --btn-orange: linear-gradient(90deg, #ffaa00, #ff7700);
-            --team-a: #10b981;
-            --team-b: #3b82f6;
         }
-        
+
         body {
             font-family: 'Cairo', sans-serif;
-            background: radial-gradient(circle at top, #1e293b, #0f172a);
-            color: white;
             margin: 0;
-            overflow-x: hidden;
+            background-color: var(--bg-dark);
+            color: #333;
+            overflow: hidden;
+        }
+
+        /* --- واجهة اللوبي (Lobby) --- */
+        #lobby-panel {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at top, #1e293b, #0f172a);
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
         }
-
-        /* --- واجهة اللوبي (مضغوطة) --- */
-        .glass-panel {
-            background: var(--panel-bg);
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
+            padding: 25px;
             border-radius: 20px;
-            padding: 20px;
             width: 90%;
-            max-width: 600px;
-            margin-top: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 500px;
+        }
+        .form-group { margin-bottom: 15px; }
+        select { width: 100%; padding: 12px; border-radius: 10px; border: none; background: #1e293b; color: white; font-family: 'Cairo'; }
+        .teams-preview { display: flex; gap: 15px; margin-top: 20px; }
+        .team-preview-box { flex: 1; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border-top: 4px solid; }
+        .start-btn { 
+            background: linear-gradient(90deg, #ffaa00, #ff7700); 
+            color: #000; font-weight: 900; border: none; padding: 15px 50px; 
+            border-radius: 50px; cursor: pointer; margin-top: 20px; font-size: 1.2rem;
         }
 
-        .form-group { margin-bottom: 12px; }
-        select, input {
-            width: 100%; padding: 10px; border-radius: 10px;
-            border: 1px solid #334155; background: #0f172a; color: white;
-        }
-
-        .teams-container { display: flex; gap: 15px; margin-top: 15px; }
-        .team-box { flex: 1; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; border-top: 4px solid; }
-        .student-item { display: flex; justify-content: space-between; padding: 5px; font-size: 0.85rem; }
-        .swap-btn { background: #475569; border: none; color: white; cursor: pointer; border-radius: 4px; padding: 2px 8px; }
-
-        .start-btn {
-            background: var(--btn-orange); color: #000; font-weight: 900;
-            padding: 12px 40px; border-radius: 50px; cursor: pointer; border: none; margin: 20px;
-        }
-
-        /* --- واجهة المسابقة (Game Screen) --- */
+        /* --- واجهة المسابقة (Split Screen) --- */
         #game-screen {
-            display: none; width: 100%; max-width: 900px; padding: 20px; text-align: center;
+            display: none;
+            height: 100vh;
+            grid-template-rows: 80px 1fr;
         }
 
-        .game-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        
+        /* الشريط العلوي */
+        .header-bar {
+            background-color: #1a1a1a;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .score-box { font-size: 1.5rem; font-weight: 900; }
+        .score-green { color: #4caf50; }
+        .score-red { color: #f44336; }
+
+        /* منطقة التحدي المنقسمة */
+        .arena {
+            display: flex;
+            height: 100%;
+        }
+        .side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            transition: 0.5s;
+            position: relative;
+        }
+        .side-green { background-color: var(--green-pastel); }
+        .side-red { background-color: var(--red-pastel); }
+
+        /* حالة الانتظار */
+        .side.inactive { opacity: 0.4; filter: grayscale(0.5); }
+        .status-badge {
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-weight: 900;
+            margin-bottom: 20px;
+        }
+        .waiting { background: #cfd8dc; color: #546e7a; }
+        .active-turn { background: #d32f2f; color: white; animation: pulse 1s infinite; }
+
+        /* منطقة السؤال (بالمنتصف) */
+        .question-overlay {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 2px solid #ddd;
+        }
         .timer-circle {
-            width: 80px; height: 80px; border-radius: 50%; border: 5px solid var(--accent-yellow);
-            display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900;
-        }
-        .timer-danger { border-color: #ef4444; color: #ef4444; animation: pulse 0.5s infinite; }
-
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-        .question-card {
-            background: var(--panel-bg); padding: 30px; border-radius: 20px; margin-bottom: 20px;
-            min-height: 200px; border: 1px solid var(--accent-yellow);
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #1a1a1a; color: var(--accent-yellow);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: 900; margin: -60px auto 20px;
+            border: 4px solid var(--accent-yellow);
         }
 
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .option-btn {
-            background: #1e293b; border: 2px solid #334155; color: white; padding: 15px;
-            border-radius: 12px; cursor: pointer; font-size: 1.1rem; transition: 0.2s;
+        /* الأزرار */
+        .options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
         }
-        .option-btn:hover { border-color: var(--accent-yellow); background: #334155; }
+        .opt-btn {
+            background: white; border: 2px solid #eee; padding: 15px;
+            border-radius: 12px; cursor: pointer; font-family: 'Cairo';
+            font-weight: 700; transition: 0.2s; font-size: 1.1rem;
+        }
+        .opt-btn:hover { border-color: #999; background: #f9f9f9; }
 
-        /* مسار البيانات */
-        .data-path-container {
-            display: flex; align-items: center; gap: 10px; margin: 20px 0; background: #000; padding: 10px; border-radius: 50px;
-        }
-        .path-line { flex: 1; height: 10px; background: #334155; border-radius: 5px; position: relative; overflow: hidden; }
-        .packet {
-            width: 20px; height: 20px; background: var(--accent-yellow); border-radius: 4px;
-            position: absolute; top: -5px; transition: 1s ease-in-out;
-        }
-        
-        .active-team { transform: scale(1.05); box-shadow: 0 0 20px var(--accent-yellow); }
+        .student-list { list-style: none; padding: 0; text-align: center; }
+        .student-list li { font-size: 1.3rem; margin-bottom: 10px; font-weight: 700; color: #444; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <h1 id="main-title">مسار البيانات 🚀</h1>
-
-    <div class="glass-panel" id="lobby-panel">
-        <div class="form-group">
-            <select id="unit-select" onchange="loadLessons()"><option value="">-- اختر الوحدة --</option></select>
-        </div>
-        <div class="form-group">
-            <select id="lesson-select" disabled><option value="">-- اختر الدرس --</option></select>
-        </div>
-        <div class="form-group">
-            <select id="class-select" onchange="fetchStudentsAndGenerateTeams()">
-                <option value="">-- اختر الفصل --</option>
-                <option value="1">سادس (1)</option><option value="2">سادس (2)</option>
-                <option value="3">سادس (3)</option><option value="4">سادس (4)</option>
-                <option value="5">سادس (5)</option><option value="6">سادس (6)</option>
-                <option value="7">سادس (7)</option><option value="8">سادس (8)</option>
-            </select>
-        </div>
-        <div class="teams-container hidden" id="teams-area">
-            <div class="team-box" style="border-color: var(--team-a)">
-                <div id="team-a-list"></div>
+    <div id="lobby-panel">
+        <h1 style="font-size: 2.5rem; margin-bottom: 20px;">مسار البيانات 🚀</h1>
+        <div class="glass-card">
+            <div class="form-group">
+                <select id="unit-select" onchange="loadLessons()"><option value="">-- اختر الوحدة --</option></select>
             </div>
-            <div class="team-box" style="border-color: var(--team-b)">
-                <div id="team-b-list"></div>
+            <div class="form-group">
+                <select id="lesson-select" disabled><option value="">-- اختر الدرس --</option></select>
             </div>
+            <div class="form-group">
+                <select id="class-select" onchange="fetchData()"></select>
+            </div>
+            <div class="teams-preview hidden" id="teams-preview">
+                <div class="team-preview-box" style="border-color: #4caf50;"><div id="list-a-preview"></div></div>
+                <div class="team-preview-box" style="border-color: #f44336;"><div id="list-b-preview"></div></div>
+            </div>
+            <button id="start-btn" class="start-btn" onclick="startGame()" disabled>ابدأ المسابقة</button>
         </div>
-        <button id="start-btn" class="start-btn" onclick="initGame()" disabled>ابدأ المسابقة</button>
     </div>
 
     <div id="game-screen">
-        <div class="game-header">
-            <div id="team-a-status" style="color: var(--team-a)">الفريق الأول: <span id="score-a">0</span></div>
-            <div id="timer-display" class="timer-circle">30</div>
-            <div id="team-b-status" style="color: var(--team-b)">الفريق الثاني: <span id="score-b">0</span></div>
-        </div>
+        <header class="header-bar">
+            <div class="score-box score-green">الفريق الأخضر: <span id="score-a">0</span></div>
+            <div id="lesson-title" style="font-weight: 700; color: #aaa;">مسار البيانات | الدرس الأول</div>
+            <div class="score-box score-red">الفريق الأحمر: <span id="score-b">0</span></div>
+        </header>
 
-        <div class="question-card">
-            <h2 id="current-team-name">دور الفريق الأول</h2>
-            <p id="question-text" style="font-size: 1.4rem;"></p>
-            <div id="question-image"></div>
-        </div>
+        <main class="arena">
+            <section id="side-a" class="side side-green">
+                <div id="status-a" class="status-badge waiting">في انتظار دورك...</div>
+                <h2 style="color: var(--team-green)">الفريق الأول</h2>
+                <ul id="students-a" class="student-list"></ul>
+            </section>
 
-        <div class="options-grid" id="options-container"></div>
+            <section id="side-b" class="side side-red">
+                <div id="status-b" class="status-badge waiting">في انتظار دورك...</div>
+                <h2 style="color: var(--team-red)">الفريق الثاني</h2>
+                <ul id="students-b" class="student-list"></ul>
+            </section>
 
-        <div class="data-path-container">
-            <span>💻 الطلاب</span>
-            <div class="path-line"><div id="packet-a" class="packet" style="left: 0; background: var(--team-a)"></div></div>
-            <div class="path-line"><div id="packet-b" class="packet" style="left: 0; background: var(--team-b)"></div></div>
-            <span>☁️ السيرفر</span>
-        </div>
+            <div class="question-overlay">
+                <div id="timer" class="timer-circle">30</div>
+                <div id="q-image"></div>
+                <h2 id="q-text" style="margin: 10px 0;">جاري تحميل السؤال...</h2>
+                <div class="options-container" id="options"></div>
+            </div>
+        </main>
     </div>
 
-    <audio id="sound-tick" src="https://www.soundjay.com/buttons/beep-07a.mp3"></audio>
-    <audio id="sound-correct" src="https://www.soundjay.com/buttons/button-09a.mp3"></audio>
-    <audio id="sound-wrong" src="https://www.soundjay.com/buttons/button-10a.mp3"></audio>
+    <audio id="tick-sound" src="https://www.soundjay.com/buttons/beep-07a.mp3"></audio>
 
     <script>
-        const QUESTIONS_ID = '1WyxijjF5hdX6B8bmCQOk-16Jwon1ejECbBuQXH0iwaI';
-        const STUDENTS_ID = '1cBr5-rX-HAI-ZykHwE1cSSTyquNno82h0fyf4vUAdyI';
+        const SHEETS = {
+            questions: '1WyxijjF5hdX6B8bmCQOk-16Jwon1ejECbBuQXH0iwaI',
+            students: '1cBr5-rX-HAI-ZykHwE1cSSTyquNno82h0fyf4vUAdyI'
+        };
 
-        let allQuestions = [], filteredQuestions = [], currentQIndex = 0;
-        let students = [], teamA = [], teamB = [], scoreA = 0, scoreB = 0;
-        let turn = 'A', timer, timeLeft = 30;
+        let db = [], currentQuestions = [], qIdx = 0;
+        let teamA = [], teamB = [], scores = {a:0, b:0}, turn = 'a';
+        let timer, timeLeft = 30;
 
-        // --- منطق الربط مع قوقل شيت ---
         window.onload = () => {
-            fetchCSV(`https://docs.google.com/spreadsheets/d/${QUESTIONS_ID}/gviz/tq?tqx=out:csv`, (data) => {
-                allQuestions = data.filter(r => r[0] && r[0] !== "الوحدة");
-                const units = [...new Set(allQuestions.map(r => r[0]))];
-                units.forEach(u => document.getElementById('unit-select').innerHTML += `<option value="${u}">${u}</option>`);
+            // تحميل الفصول والأسئلة
+            const classSelect = document.getElementById('class-select');
+            classSelect.innerHTML = '<option value="">-- اختر الفصل --</option>';
+            for(let i=1; i<=8; i++) classSelect.innerHTML += `<option value="${i}">سادس (${i})</option>`;
+
+            Papa.parse(`https://docs.google.com/spreadsheets/d/${SHEETS.questions}/gviz/tq?tqx=out:csv`, {
+                download: true, complete: (res) => {
+                    db = res.data.filter(r => r[0] && r[0] !== "الوحدة");
+                    const units = [...new Set(db.map(r => r[0]))];
+                    units.forEach(u => document.getElementById('unit-select').innerHTML += `<option value="${u}">${u}</option>`);
+                }
             });
         };
 
-        function fetchCSV(url, callback) {
-            Papa.parse(url, { download: true, complete: (results) => callback(results.data) });
-        }
-
         function loadLessons() {
             const unit = document.getElementById('unit-select').value;
-            const lessonSelect = document.getElementById('lesson-select');
-            const lessons = [...new Set(allQuestions.filter(r => r[0] === unit).map(r => r[1]))];
-            lessonSelect.innerHTML = '<option value="all">جميع دروس الوحدة</option>';
-            lessons.forEach(l => lessonSelect.innerHTML += `<option value="${l}">${l}</option>`);
-            lessonSelect.disabled = false;
+            const lessons = [...new Set(db.filter(r => r[0] === unit).map(r => r[1]))];
+            const sel = document.getElementById('lesson-select');
+            sel.innerHTML = '<option value="all">جميع الدروس</option>';
+            lessons.forEach(l => sel.innerHTML += `<option value="${l}">${l}</option>`);
+            sel.disabled = false;
         }
 
-        function fetchStudentsAndGenerateTeams() {
-            const classVal = document.getElementById('class-select').value;
-            const url = `https://docs.google.com/spreadsheets/d/${STUDENTS_ID}/gviz/tq?tqx=out:csv&sheet=${classVal}`;
-            fetchCSV(url, (data) => {
-                students = data.map(r => r[0]).filter(n => n && n !== "الاسم");
-                generateTeams();
+        function fetchData() {
+            const cls = document.getElementById('class-select').value;
+            Papa.parse(`https://docs.google.com/spreadsheets/d/${SHEETS.students}/gviz/tq?tqx=out:csv&sheet=${cls}`, {
+                download: true, complete: (res) => {
+                    const all = res.data.map(r => r[0]).filter(n => n && n !== "الاسم");
+                    let shuf = all.sort(() => 0.5 - Math.random());
+                    teamA = [shuf[0], shuf[1]]; teamB = [shuf[2], shuf[3]];
+                    document.getElementById('list-a-preview').innerText = teamA.join(' - ');
+                    document.getElementById('list-b-preview').innerText = teamB.join(' - ');
+                    document.getElementById('teams-preview').classList.remove('hidden');
+                    document.getElementById('start-btn').disabled = false;
+                }
             });
         }
 
-        function generateTeams() {
-            let shuffled = [...students].sort(() => 0.5 - Math.random());
-            teamA = [shuffled[0], shuffled[1]];
-            teamB = [shuffled[2], shuffled[3]];
-            renderTeams();
-            document.getElementById('teams-area').classList.remove('hidden');
-            document.getElementById('start-btn').disabled = false;
-        }
-
-        function renderTeams() {
-            const listA = document.getElementById('team-a-list');
-            const listB = document.getElementById('team-b-list');
-            listA.innerHTML = teamA.map((s, i) => `<div class="student-item">${s} <button class="swap-btn" onclick="swap('A',${i})">🔄</button></div>`).join('');
-            listB.innerHTML = teamB.map((s, i) => `<div class="student-item">${s} <button class="swap-btn" onclick="swap('B',${i})">🔄</button></div>`).join('');
-        }
-
-        function swap(t, i) {
-            let available = students.filter(s => !teamA.includes(s) && !teamB.includes(s));
-            if (available.length > 0) {
-                let newS = available[Math.floor(Math.random() * available.length)];
-                if (t === 'A') teamA[i] = newS; else teamB[i] = newS;
-                renderTeams();
-            }
-        }
-
-        // --- محرك المسابقة ---
-        function initGame() {
+        function startGame() {
             const unit = document.getElementById('unit-select').value;
             const lesson = document.getElementById('lesson-select').value;
-            filteredQuestions = allQuestions.filter(r => r[0] === unit && (lesson === 'all' || r[1] === lesson));
-            filteredQuestions.sort(() => 0.5 - Math.random());
+            currentQuestions = db.filter(r => r[0] === unit && (lesson === 'all' || r[1] === lesson)).sort(() => 0.5 - Math.random());
             
             document.getElementById('lobby-panel').classList.add('hidden');
-            document.getElementById('main-title').classList.add('hidden');
-            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('game-screen').style.display = 'grid';
+            document.getElementById('lesson-title').innerText = `مسار البيانات | ${unit}`;
+            
+            // تعبئة أسماء الطلاب في الواجهة
+            document.getElementById('students-a').innerHTML = teamA.map(s => `<li>${s}</li>`).join('');
+            document.getElementById('students-b').innerHTML = teamB.map(s => `<li>${s}</li>`).join('');
             
             showQuestion();
         }
 
         function showQuestion() {
-            if (currentQIndex >= filteredQuestions.length) { alert("انتهت الأسئلة!"); return; }
+            if(qIdx >= currentQuestions.length) return alert("انتهت الأسئلة!");
             
-            clearInterval(timer);
-            timeLeft = 30;
-            updateTimerDisplay();
-            startTimer();
-
-            const q = filteredQuestions[currentQIndex];
-            document.getElementById('current-team-name').innerText = `دور: ${turn === 'A' ? 'الفريق الأول' : 'الفريق الثاني'}`;
-            document.getElementById('current-team-name').style.color = turn === 'A' ? 'var(--team-a)' : 'var(--team-b)';
+            updateTurnUI();
+            const q = currentQuestions[qIdx];
             
-            // معالجة السؤال (نص أو صورة)
-            const qContent = q[2];
-            if (qContent.includes('drive.google.com')) {
-                const id = qContent.match(/\/d\/([a-zA-Z0-9_-]+)/)[1];
-                document.getElementById('question-text').innerText = "حل اللبنة البرمجية التالية:";
-                document.getElementById('question-image').innerHTML = `<img src="https://drive.google.com/uc?export=view&id=${id}" style="max-width:250px; border-radius:10px;">`;
+            // معالجة السؤال
+            const qBody = q[2];
+            if(qBody.includes('drive.google.com')) {
+                const id = qBody.match(/\/d\/([a-zA-Z0-9_-]+)/)[1];
+                document.getElementById('q-text').innerText = "ما هي نتيجة اللبنة البرمجية؟";
+                document.getElementById('q-image').innerHTML = `<img src="https://drive.google.com/uc?export=view&id=${id}" style="max-height:150px; margin-bottom:10px;">`;
             } else {
-                document.getElementById('question-text').innerText = qContent;
-                document.getElementById('question-image').innerHTML = "";
+                document.getElementById('q-text').innerText = qBody;
+                document.getElementById('q-image').innerHTML = "";
             }
 
-            // عرض الخيارات
-            const container = document.getElementById('options-container');
-            container.innerHTML = "";
-            [3, 4, 5].forEach(idx => {
-                if (q[idx]) {
+            // الخيارات
+            const opts = document.getElementById('options');
+            opts.innerHTML = "";
+            [3,4,5,6].forEach((idx, i) => {
+                if(q[idx]) {
                     const btn = document.createElement('button');
-                    btn.className = 'option-btn';
+                    btn.className = 'opt-btn';
                     btn.innerText = q[idx];
-                    btn.onclick = () => checkAnswer(idx - 2, q[6]);
-                    container.appendChild(btn);
+                    btn.onclick = () => check(i+1, q[6]); // العمود G هو الإجابة الصحيحة
+                    opts.appendChild(btn);
                 }
             });
+
+            resetTimer();
         }
 
-        function checkAnswer(selected, correct) {
-            clearInterval(timer);
-            if (selected == correct) {
-                document.getElementById('sound-correct').play();
-                if (turn === 'A') { scoreA++; movePacket('A'); } else { scoreB++; movePacket('B'); }
+        function updateTurnUI() {
+            const sideA = document.getElementById('side-a');
+            const sideB = document.getElementById('side-b');
+            const statusA = document.getElementById('status-a');
+            const statusB = document.getElementById('status-b');
+
+            if(turn === 'a') {
+                sideA.classList.remove('inactive'); sideB.classList.add('inactive');
+                statusA.innerText = "دوركم الآن! 🚀"; statusA.className = "status-badge active-turn";
+                statusB.innerText = "في انتظار دورك..."; statusB.className = "status-badge waiting";
             } else {
-                document.getElementById('sound-wrong').play();
+                sideB.classList.remove('inactive'); sideA.classList.add('inactive');
+                statusB.innerText = "دوركم الآن! 🚀"; statusB.className = "status-badge active-turn";
+                statusA.innerText = "في انتظار دورك..."; statusA.className = "status-badge waiting";
+            }
+        }
+
+        function check(choice, correct) {
+            clearInterval(timer);
+            if(choice == correct) {
+                scores[turn]++;
+                document.getElementById(`score-${turn}`).innerText = scores[turn];
             }
             
-            document.getElementById('score-a').innerText = scoreA;
-            document.getElementById('score-b').innerText = scoreB;
+            turn = turn === 'a' ? 'b' : 'a';
+            qIdx++;
+            setTimeout(showQuestion, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            timeLeft = 30;
+            const el = document.getElementById('timer');
+            el.innerText = timeLeft;
+            el.style.color = "var(--accent-yellow)";
             
-            turn = (turn === 'A') ? 'B' : 'A';
-            currentQIndex++;
-            setTimeout(showQuestion, 1500);
-        }
-
-        function movePacket(t) {
-            const packet = document.getElementById(`packet-${t.toLowerCase()}`);
-            const score = t === 'A' ? scoreA : scoreB;
-            packet.style.left = `${(score / 5) * 100}%`;
-            if (score >= 5) { alert(`🎉 مبروك! فاز ${t === 'A' ? 'الفريق الأول' : 'الفريق الثاني'}`); location.reload(); }
-        }
-
-        function startTimer() {
             timer = setInterval(() => {
                 timeLeft--;
-                updateTimerDisplay();
-                if (timeLeft <= 5 && timeLeft > 0) document.getElementById('sound-tick').play();
-                if (timeLeft <= 0) {
+                el.innerText = timeLeft;
+                if(timeLeft <= 5) {
+                    el.style.color = "#ff4444";
+                    document.getElementById('tick-sound').play();
+                }
+                if(timeLeft <= 0) {
                     clearInterval(timer);
-                    document.getElementById('sound-wrong').play();
-                    turn = (turn === 'A') ? 'B' : 'A';
-                    currentQIndex++;
+                    turn = turn === 'a' ? 'b' : 'a';
+                    qIdx++;
                     showQuestion();
                 }
             }, 1000);
-        }
-
-        function updateTimerDisplay() {
-            const display = document.getElementById('timer-display');
-            display.innerText = timeLeft;
-            if (timeLeft <= 5) display.classList.add('timer-danger');
-            else display.classList.remove('timer-danger');
         }
     </script>
 </body>
