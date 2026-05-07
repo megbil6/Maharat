@@ -264,8 +264,8 @@ body { font-family: 'Yoh', sans-serif; height: 100vh; overflow: hidden; backgrou
       </select>
     </div>
     <div class="num-input-row">
-      <label>عدد الأسئلة:</label>
-      <input type="number" id="num-questions" value="10" min="1" max="30">
+      <label>نقاط الفوز:</label>
+      <input type="number" id="win-score" value="5" min="1" max="20">
     </div>
   </div>
 
@@ -549,21 +549,25 @@ function checkReady() {
 // ══════════════════════════════════════════════
 //  بدء المسابقة
 // ══════════════════════════════════════════════
+let questionPool = []; // كل الأسئلة المتاحة للدرس
+let winScore = 5;
+
 function startGame() {
   const unit    = document.getElementById('unit-select').value;
   const lesson  = document.getElementById('lesson-select').value;
   const classV  = document.getElementById('class-select').value;
-  const numQ    = parseInt(document.getElementById('num-questions').value) || 10;
+  winScore      = parseInt(document.getElementById('win-score').value) || 5;
 
   if (!unit || !lesson || !classV) { setStatus('⚠️ اختر الوحدة والدرس والفصل'); return; }
 
   const pool = unitsMap[unit]?.[lesson] || [];
   if (pool.length === 0) { setStatus('❌ لا توجد أسئلة لهذا الدرس'); return; }
 
-  questions = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(numQ, pool.length));
+  questionPool = [...pool]; // احتفظ بكل الأسئلة
   redTeam.score = 0; greenTeam.score = 0;
   currentQ = 0; currentTurn = 'red';
 
+  // تحديث شريط التقدم ليعتمد على نقاط الفوز
   document.getElementById('red-players-game').textContent   = redTeam.players.join(' & ');
   document.getElementById('green-players-game').textContent = greenTeam.players.join(' & ');
   document.getElementById('game-title').textContent = `${unit} ← ${lesson} | سادس ${classV}`;
@@ -571,6 +575,13 @@ function startGame() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('game-screen').style.display  = 'flex';
   renderQuestion();
+}
+
+// ══════════════════════════════════════════════
+//  اختيار سؤال عشوائي
+// ══════════════════════════════════════════════
+function getRandomQuestion() {
+  return questionPool[Math.floor(Math.random() * questionPool.length)];
 }
 
 // ══════════════════════════════════════════════
@@ -596,21 +607,19 @@ function setQuestion(elId, text) {
 }
 
 function updateProgress() {
-  const total = Math.ceil(questions.length / 2);
-  const rPct  = total > 0 ? Math.min(100, (redTeam.score / total) * 100) : 0;
-  const gPct  = total > 0 ? Math.min(100, (greenTeam.score / total) * 100) : 0;
+  const rPct = Math.min(100, (redTeam.score / winScore) * 100);
+  const gPct = Math.min(100, (greenTeam.score / winScore) * 100);
   document.getElementById('red-progress').style.width   = rPct + '%';
   document.getElementById('green-progress').style.width = gPct + '%';
-  document.getElementById('red-score-top').textContent   = redTeam.score;
-  document.getElementById('green-score-top').textContent = greenTeam.score;
+  document.getElementById('red-score-top').textContent   = `${redTeam.score}/${winScore}`;
+  document.getElementById('green-score-top').textContent = `${greenTeam.score}/${winScore}`;
 }
 
 function renderQuestion() {
   clearTimer();
-  document.getElementById('question-counter').textContent = `السؤال ${currentQ + 1} من ${questions.length}`;
+  const q = getRandomQuestion();
+  document.getElementById('question-counter').textContent = `🔴 ${redTeam.score} — 🟢 ${greenTeam.score}`;
   updateProgress();
-
-  const q      = questions[currentQ];
   const isRed  = currentTurn === 'red';
   const actId  = isRed ? 'red' : 'green';
   const waitId = isRed ? 'green' : 'red';
@@ -636,10 +645,6 @@ function renderQuestion() {
 
   startTimer(actId, actChoices, q.answer);
 }
-
-// ══════════════════════════════════════════════
-//  المؤقت
-// ══════════════════════════════════════════════
 function startTimer(teamId, choicesEl, correct) {
   timeLeft = TIMER_SECONDS;
   const timerEl = document.getElementById(`${teamId}-timer`);
@@ -670,6 +675,10 @@ function clearTimer() {
 }
 
 // ══════════════════════════════════════════════
+//  المؤقت
+// ══════════════════════════════════════════════
+
+// ══════════════════════════════════════════════
 //  معالجة الإجابة
 // ══════════════════════════════════════════════
 function handleAnswer(chosen, correct, choicesEl, teamId, isTimeout) {
@@ -678,58 +687,30 @@ function handleAnswer(chosen, correct, choicesEl, teamId, isTimeout) {
   btns.forEach(b => b.disabled = true);
   btns[correct].classList.add('correct');
 
-  if (isTimeout) {
-    // انتهى الوقت — السؤال ينتقل للفريق الآخر
-    setTimeout(() => transferQuestion(correct, choicesEl), 1400);
+  if (isTimeout || chosen !== correct) {
+    if (!isTimeout) btns[chosen].classList.add('wrong');
+    // انتقل للفريق الآخر بسؤال عشوائي جديد
+    setTimeout(() => {
+      currentTurn = currentTurn === 'red' ? 'green' : 'red';
+      renderQuestion();
+    }, 1400);
     return;
   }
 
-  if (chosen === correct) {
-    if (teamId === 'red') redTeam.score++;
-    else greenTeam.score++;
-    updateProgress();
-    setTimeout(nextTurn, 1400);
+  // إجابة صحيحة
+  if (teamId === 'red') redTeam.score++;
+  else greenTeam.score++;
+  updateProgress();
+
+  // تحقق من الفوز
+  if (redTeam.score >= winScore || greenTeam.score >= winScore) {
+    setTimeout(showResult, 1400);
   } else {
-    btns[chosen].classList.add('wrong');
-    // إجابة خاطئة — ينتقل للفريق الآخر
-    setTimeout(() => transferQuestion(correct, choicesEl), 1400);
+    setTimeout(() => {
+      currentTurn = currentTurn === 'red' ? 'green' : 'red';
+      renderQuestion();
+    }, 1400);
   }
-}
-
-function transferQuestion(correct, oldChoicesEl) {
-  // تبديل الدور فقط بدون تقدم السؤال
-  currentTurn = currentTurn === 'red' ? 'green' : 'red';
-  const q      = questions[currentQ];
-  const isRed  = currentTurn === 'red';
-  const actId  = isRed ? 'red' : 'green';
-  const waitId = isRed ? 'green' : 'red';
-
-  document.getElementById('red-panel').className   = 'team-panel' + (isRed ? '' : ' inactive');
-  document.getElementById('green-panel').className = 'team-panel' + (!isRed ? '' : ' inactive');
-  document.getElementById('red-turn').className    = 'turn-indicator' + (isRed ? ' active' : '');
-  document.getElementById('green-turn').className  = 'turn-indicator' + (!isRed ? '' : '');
-
-  setQuestion(`${actId}-question`, q.q);
-  setQuestion(`${waitId}-question`, 'في انتظار دورك...');
-
-  const actChoices = document.getElementById(`${actId}-choices`);
-  document.getElementById(`${waitId}-choices`).innerHTML = '';
-  actChoices.innerHTML = '';
-  q.choices.forEach((ch, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'choice-btn';
-    btn.textContent = ch;
-    btn.onclick = () => handleAnswer(i, q.answer, actChoices, actId, false);
-    actChoices.appendChild(btn);
-  });
-  startTimer(actId, actChoices, q.answer);
-}
-
-function nextTurn() {
-  currentQ++;
-  if (currentQ >= questions.length) { showResult(); return; }
-  currentTurn = currentTurn === 'red' ? 'green' : 'red';
-  renderQuestion();
 }
 
 // ══════════════════════════════════════════════
